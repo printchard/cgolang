@@ -1,13 +1,17 @@
 package main
 
 import (
-	"game-of-life/graphics"
 	"image/color"
 	"runtime"
+
+	"github.com/printchard/cgolang/graphics"
 )
 
-const width = 20
-const height = 20
+const width = 100
+const height = 100
+
+const screenHeight = 800
+const screenWidth = 1200
 
 type Point struct {
 	x, y int
@@ -20,6 +24,8 @@ func (p Point) Add(op Point) Point {
 type Game struct {
 	state     [][]bool
 	nextState [][]bool
+	isPaused  bool
+	showGrid  bool
 }
 
 func (g *Game) At(p Point) bool {
@@ -37,7 +43,7 @@ func initGame(w, h int) *Game {
 		state[i] = make([]bool, w)
 		nextState[i] = make([]bool, w)
 	}
-	return &Game{state, nextState}
+	return &Game{state: state, nextState: nextState}
 }
 
 func (g *Game) calculateNextState() {
@@ -108,6 +114,43 @@ func (g *Game) SeedGlider(origin Point) {
 	}
 }
 
+// SeedGliderGun places the classic Gosper Glider Gun.
+// Requires at least a 40x40 grid to run safely without hitting borders immediately.
+func (g *Game) SeedGliderGun(origin Point) {
+	offsets := []Point{
+		// Left square block
+		{1, 5}, {2, 5},
+		{1, 6}, {2, 6},
+
+		// Left gun shape
+		{11, 5}, {11, 6}, {11, 7},
+		{12, 4}, {12, 8},
+		{13, 3}, {13, 9},
+		{14, 3}, {14, 9},
+		{15, 6},
+		{16, 4}, {16, 8},
+		{17, 5}, {17, 6}, {17, 7},
+		{18, 6},
+
+		// Right gun shape
+		{21, 3}, {21, 4}, {21, 5},
+		{22, 3}, {22, 4}, {22, 5},
+		{23, 2}, {23, 6},
+		{25, 1}, {25, 2}, {25, 6}, {25, 7},
+
+		// Right square block
+		{35, 3}, {36, 3},
+		{35, 4}, {36, 4},
+	}
+
+	for _, offset := range offsets {
+		p := origin.Add(offset)
+		if p.y >= 0 && p.y < len(g.state) && p.x >= 0 && p.x < len(g.state[0]) {
+			g.state[p.y][p.x] = true
+		}
+	}
+}
+
 func init() {
 	runtime.LockOSThread()
 }
@@ -115,19 +158,27 @@ func init() {
 func main() {
 	game := initGame(width, height)
 
-	game.SeedGlider(Point{2, 2})
+	game.SeedGliderGun(Point{2, 2})
 
-	cellSize := 20
+	cellSize := 15
 
-	graphics.InitWindow(1200, 800, "Hello from Go!")
+	graphics.InitWindow(screenWidth, screenHeight, "Hello from Go!")
 	graphics.SetTargetFPS(60)
+	graphics.SetExitKey(graphics.KeyQ)
 	defer graphics.CloseWindow()
 
 	frameCount := 0
 	for !graphics.WindowShouldClose() {
 		frameCount++
 
-		if frameCount%12 == 0 {
+		if graphics.IsKeyPressed(graphics.KeySpace) {
+			game.isPaused = !game.isPaused
+		}
+		if graphics.IsKeyPressed(graphics.KeyG) {
+			game.showGrid = !game.showGrid
+		}
+
+		if frameCount%6 == 0 && !game.isPaused {
 			game.calculateNextState()
 			game.Swap()
 		}
@@ -141,6 +192,11 @@ func main() {
 				}
 			}
 		}
+
+		if game.showGrid {
+			graphics.DrawGrid(width, height, cellSize)
+		}
+
 		graphics.EndDrawing()
 	}
 }

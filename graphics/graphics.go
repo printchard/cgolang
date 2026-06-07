@@ -13,6 +13,16 @@ import (
 	"unsafe"
 )
 
+type Key int
+
+const (
+	KeyQ Key = iota
+	KeySpace
+	KeyG
+)
+
+var Grey color.Color = color.RGBA{128, 128, 128, 255}
+
 func InitWindow(width, height int, title string) {
 	t := C.CString(title)
 	defer C.free(unsafe.Pointer(t))
@@ -56,4 +66,47 @@ func SetTargetFPS(fps int) {
 
 func DrawCell(x, y, cellSize int, c color.Color) {
 	C.DrawRectangle(C.int(x*cellSize), C.int(y*cellSize), C.int(cellSize), C.int(cellSize), toCColor(c))
+}
+
+func DrawGrid(gridWidth, gridHeight, cellSize int) {
+	pixelWidth := gridWidth * cellSize
+	pixelHeight := gridHeight * cellSize
+
+	for x := 0; x <= pixelWidth; x += cellSize {
+		C.DrawLine(
+			C.int(x),
+			0,
+			C.int(x),
+			C.int(pixelHeight),
+			toCColor(Grey),
+		)
+	}
+
+	for y := 0; y <= pixelHeight; y += cellSize {
+		C.DrawLine(
+			0,
+			C.int(y),
+			C.int(pixelWidth),
+			C.int(y),
+			toCColor(Grey),
+		)
+	}
+}
+
+func SetExitKey(k Key) {
+	switch k {
+	case KeyQ:
+		C.SetExitKey(C.KEY_Q)
+	}
+}
+
+func IsKeyPressed(k Key) bool {
+	switch k {
+	case KeySpace:
+		return bool(C.IsKeyPressed(C.KEY_SPACE))
+	case KeyG:
+		return bool(C.IsKeyPressed(C.KEY_G))
+	default:
+		return false
+	}
 }
