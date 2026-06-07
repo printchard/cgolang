@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"runtime"
 
@@ -12,6 +13,43 @@ const height = 100
 
 const screenHeight = 800
 const screenWidth = 1200
+const fontSize = 24
+
+const cellSize = 7
+
+// Classic Gosper Glider Gun.
+// Requires at least a 40x40 grid to run safely without hitting borders immediately.
+var GliderGun = []Point{
+	// Left square block
+	{1, 5}, {2, 5},
+	{1, 6}, {2, 6},
+
+	// Left gun shape
+	{11, 5}, {11, 6}, {11, 7},
+	{12, 4}, {12, 8},
+	{13, 3}, {13, 9},
+	{14, 3}, {14, 9},
+	{15, 6},
+	{16, 4}, {16, 8},
+	{17, 5}, {17, 6}, {17, 7},
+	{18, 6},
+
+	// Right gun shape
+	{21, 3}, {21, 4}, {21, 5},
+	{22, 3}, {22, 4}, {22, 5},
+	{23, 2}, {23, 6},
+	{25, 1}, {25, 2}, {25, 6}, {25, 7},
+
+	// Right square block
+	{35, 3}, {36, 3},
+	{35, 4}, {36, 4},
+}
+
+var Glider = []Point{
+	{1, 0},
+	{2, 1},
+	{0, 2}, {1, 2}, {2, 2},
+}
 
 type Point struct {
 	x, y int
@@ -22,10 +60,11 @@ func (p Point) Add(op Point) Point {
 }
 
 type Game struct {
-	state     [][]bool
-	nextState [][]bool
-	isPaused  bool
-	showGrid  bool
+	state      [][]bool
+	nextState  [][]bool
+	isPaused   bool
+	showGrid   bool
+	generation int
 }
 
 func (g *Game) At(p Point) bool {
@@ -36,7 +75,7 @@ func (g *Game) SetNext(p Point, alive bool) {
 	g.nextState[p.y][p.x] = alive
 }
 
-func initGame(w, h int) *Game {
+func InitGame(w, h int) *Game {
 	state := make([][]bool, h)
 	nextState := make([][]bool, h)
 	for i := range state {
@@ -47,14 +86,17 @@ func initGame(w, h int) *Game {
 }
 
 func (g *Game) calculateNextState() {
+	g.clearNextState()
 	for y := 0; y < len(g.state); y++ {
 		for x := 0; x < len(g.state[0]); x++ {
-			g.calculateNextCell(Point{x, y})
+			p := Point{x, y}
+			willBeAlive := g.calculateNextCell(p)
+			g.SetNext(p, willBeAlive)
 		}
 	}
 }
 
-func (g *Game) calculateNextCell(p Point) {
+func (g *Game) calculateNextCell(p Point) bool {
 	dirs := []Point{
 		{-1, -1}, {0, -1}, {1, -1},
 		{-1, 0}, {1, 0},
@@ -71,78 +113,24 @@ func (g *Game) calculateNextCell(p Point) {
 		}
 	}
 	if g.At(p) {
-		if nCount < 2 {
-			g.SetNext(p, false)
-		} else if nCount > 3 {
-			g.SetNext(p, false)
-		} else {
-			g.SetNext(p, true)
-		}
+		return nCount == 2 || nCount == 3
 	} else {
-		g.SetNext(p, nCount == 3)
+		return nCount == 3
 	}
 }
 
 func (g *Game) clearNextState() {
-	for y := range g.nextState {
-		for x := range g.nextState[y] {
-			g.nextState[y][x] = false
-		}
+	for _, row := range g.nextState {
+		clear(row)
 	}
 }
 
 func (g *Game) Swap() {
 	g.state, g.nextState = g.nextState, g.state
-	g.clearNextState()
+	g.generation++
 }
 
-func (g *Game) SeedGlider(origin Point) {
-	// Glider shape relative to origin:
-	// . X .
-	// . . X
-	// X X X
-	offsets := []Point{
-		{1, 0},
-		{2, 1},
-		{0, 2}, {1, 2}, {2, 2},
-	}
-	for _, offset := range offsets {
-		p := origin.Add(offset)
-		if p.y < len(g.state) && p.x < len(g.state[0]) {
-			g.state[p.y][p.x] = true
-		}
-	}
-}
-
-// SeedGliderGun places the classic Gosper Glider Gun.
-// Requires at least a 40x40 grid to run safely without hitting borders immediately.
-func (g *Game) SeedGliderGun(origin Point) {
-	offsets := []Point{
-		// Left square block
-		{1, 5}, {2, 5},
-		{1, 6}, {2, 6},
-
-		// Left gun shape
-		{11, 5}, {11, 6}, {11, 7},
-		{12, 4}, {12, 8},
-		{13, 3}, {13, 9},
-		{14, 3}, {14, 9},
-		{15, 6},
-		{16, 4}, {16, 8},
-		{17, 5}, {17, 6}, {17, 7},
-		{18, 6},
-
-		// Right gun shape
-		{21, 3}, {21, 4}, {21, 5},
-		{22, 3}, {22, 4}, {22, 5},
-		{23, 2}, {23, 6},
-		{25, 1}, {25, 2}, {25, 6}, {25, 7},
-
-		// Right square block
-		{35, 3}, {36, 3},
-		{35, 4}, {36, 4},
-	}
-
+func (g *Game) SeedPattern(origin Point, offsets []Point) {
 	for _, offset := range offsets {
 		p := origin.Add(offset)
 		if p.y >= 0 && p.y < len(g.state) && p.x >= 0 && p.x < len(g.state[0]) {
@@ -151,16 +139,25 @@ func (g *Game) SeedGliderGun(origin Point) {
 	}
 }
 
+func (g *Game) AliveCount() int {
+	count := 0
+	for y := range g.state {
+		for x := range g.state[y] {
+			if g.state[y][x] {
+				count++
+			}
+		}
+	}
+	return count
+}
+
 func init() {
 	runtime.LockOSThread()
 }
 
 func main() {
-	game := initGame(width, height)
-
-	game.SeedGliderGun(Point{2, 2})
-
-	cellSize := 15
+	game := InitGame(width, height)
+	game.SeedPattern(Point{2, 2}, GliderGun)
 
 	graphics.InitWindow(screenWidth, screenHeight, "Hello from Go!")
 	graphics.SetTargetFPS(60)
@@ -197,6 +194,16 @@ func main() {
 			graphics.DrawGrid(width, height, cellSize)
 		}
 
+		graphics.DrawFPS(screenWidth-30, 0)
+		generationText := fmt.Sprintf("Generation: %d", game.generation)
+		populationText := fmt.Sprintf("Population: %d", game.AliveCount())
+
+		maxChars := max(len(generationText), len(populationText))
+		const estimatedCharWidth = 15
+		maxTextLength := (maxChars * estimatedCharWidth)
+
+		graphics.DrawText(generationText, screenWidth-maxTextLength, 20, fontSize, color.White)
+		graphics.DrawText(populationText, screenWidth-maxTextLength, 20+fontSize, fontSize, color.White)
 		graphics.EndDrawing()
 	}
 }

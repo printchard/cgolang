@@ -110,3 +110,21 @@ func IsKeyPressed(k Key) bool {
 		return false
 	}
 }
+
+func DrawFPS(x, y int) {
+	C.DrawFPS(C.int(x), C.int(y))
+}
+
+func DrawText(text string, x, y, fontSize int, c color.Color) {
+	t := C.CString(text)
+	defer C.free(unsafe.Pointer(t))
+
+	C.DrawText(t, C.int(x), C.int(y), C.int(fontSize), toCColor(c))
+}
+
+func MeasureText(text string, fontSize int) int {
+	t := C.CString(text)
+	defer C.free(unsafe.Pointer(t))
+
+	return int(C.MeasureText(t, C.int(fontSize)))
+}
