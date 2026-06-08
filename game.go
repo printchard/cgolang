@@ -18,6 +18,10 @@ func (g *Game) SetNext(p Point, alive bool) {
 	g.nextState[p.y][p.x] = alive
 }
 
+func (g *Game) Set(p Point, alive bool) {
+	g.state[p.y][p.x] = alive
+}
+
 func InitGame(w, h int) *Game {
 	state := make([][]bool, h)
 	nextState := make([][]bool, h)

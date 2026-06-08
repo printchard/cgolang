@@ -74,6 +74,24 @@ func main() {
 		if graphics.IsKeyPressed(graphics.KeyG) {
 			game.showGrid = !game.showGrid
 		}
+		if game.isPaused {
+			leftDown := graphics.IsMouseButtonDown(graphics.MouseButtonLeft)
+			rightDown := graphics.IsMouseButtonDown(graphics.MouseButtonRight)
+
+			if leftDown || rightDown {
+				mouseX := graphics.GetMouseX()
+				mouseY := graphics.GetMouseY()
+				p := Point{mouseX / cellSize, mouseY / cellSize}
+
+				if p.x >= 0 && p.x < width && p.y >= 0 && p.y < height {
+					if leftDown {
+						game.Set(p, true)
+					} else if rightDown {
+						game.Set(p, false)
+					}
+				}
+			}
+		}
 
 		if frameCount%6 == 0 && !game.isPaused {
 			game.calculateNextState()

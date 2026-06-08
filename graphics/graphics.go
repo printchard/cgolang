@@ -13,6 +13,13 @@ import (
 	"unsafe"
 )
 
+type MouseButton int
+
+const (
+	MouseButtonLeft MouseButton = iota
+	MouseButtonRight
+)
+
 type Key int
 
 const (
@@ -127,4 +134,16 @@ func MeasureText(text string, fontSize int) int {
 	defer C.free(unsafe.Pointer(t))
 
 	return int(C.MeasureText(t, C.int(fontSize)))
+}
+
+func IsMouseButtonDown(b MouseButton) bool {
+	return bool(C.IsMouseButtonDown(C.int(b)))
+}
+
+func GetMouseX() int {
+	return int(C.GetMousePosition().x)
+}
+
+func GetMouseY() int {
+	return int(C.GetMousePosition().y)
 }
