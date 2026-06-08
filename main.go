@@ -82,11 +82,9 @@ func main() {
 
 		graphics.BeginDrawing()
 		graphics.ClearBackground(color.Black)
-		for y, row := range game.state {
-			for x := range row {
-				if game.At(Point{x, y}) {
-					graphics.DrawCell(x, y, cellSize, color.White)
-				}
+		for p := range game.Points() {
+			if game.AliveAt(p) {
+				graphics.DrawCell(p.x, p.y, cellSize, color.White)
 			}
 		}
 

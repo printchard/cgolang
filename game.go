@@ -1,5 +1,7 @@
 package main
 
+import "iter"
+
 type Game struct {
 	state      [][]bool
 	nextState  [][]bool
@@ -8,7 +10,7 @@ type Game struct {
 	generation int
 }
 
-func (g *Game) At(p Point) bool {
+func (g *Game) AliveAt(p Point) bool {
 	return g.state[p.y][p.x]
 }
 
@@ -28,12 +30,9 @@ func InitGame(w, h int) *Game {
 
 func (g *Game) calculateNextState() {
 	g.clearNextState()
-	for y := 0; y < len(g.state); y++ {
-		for x := 0; x < len(g.state[0]); x++ {
-			p := Point{x, y}
-			willBeAlive := g.calculateNextCell(p)
-			g.SetNext(p, willBeAlive)
-		}
+	for p := range g.Points() {
+		willBeAlive := g.calculateNextCell(p)
+		g.SetNext(p, willBeAlive)
 	}
 }
 
@@ -49,11 +48,12 @@ func (g *Game) calculateNextCell(p Point) bool {
 		n := p.Add(dir)
 		yCheck := n.y >= 0 && n.y < len(g.state)
 		xCheck := n.x >= 0 && n.x < len(g.state[0])
-		if yCheck && xCheck && g.At(n) {
+		if yCheck && xCheck && g.AliveAt(n) {
 			nCount++
 		}
 	}
-	if g.At(p) {
+
+	if g.AliveAt(p) {
 		return nCount == 2 || nCount == 3
 	} else {
 		return nCount == 3
@@ -82,12 +82,22 @@ func (g *Game) SeedPattern(origin Point, offsets []Point) {
 
 func (g *Game) AliveCount() int {
 	count := 0
-	for y := range g.state {
-		for x := range g.state[y] {
-			if g.state[y][x] {
-				count++
-			}
+	for p := range g.Points() {
+		if g.AliveAt(p) {
+			count++
 		}
 	}
 	return count
+}
+
+func (g *Game) Points() iter.Seq[Point] {
+	return func(yield func(p Point) bool) {
+		for y := 0; y < len(g.state); y++ {
+			for x := 0; x < len(g.state[0]); x++ {
+				if !yield(Point{x, y}) {
+					return
+				}
+			}
+		}
+	}
 }
