@@ -1,9 +1,9 @@
-package main
+package engine
 
 type Point struct {
-	x, y int
+	X, Y int
 }
 
 func (p Point) Add(op Point) Point {
-	return Point{p.x + op.x, p.y + op.y}
+	return Point{p.X + op.X, p.Y + op.Y}
 }

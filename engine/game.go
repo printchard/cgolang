@@ -1,25 +1,27 @@
-package main
+package engine
 
-import "iter"
+import (
+	"iter"
+)
 
 type Game struct {
 	state      [][]bool
 	nextState  [][]bool
-	isPaused   bool
-	showGrid   bool
-	generation int
+	IsPaused   bool
+	ShowGrid   bool
+	Generation int
 }
 
 func (g *Game) AliveAt(p Point) bool {
-	return g.state[p.y][p.x]
+	return g.state[p.Y][p.X]
 }
 
 func (g *Game) SetNext(p Point, alive bool) {
-	g.nextState[p.y][p.x] = alive
+	g.nextState[p.Y][p.X] = alive
 }
 
 func (g *Game) Set(p Point, alive bool) {
-	g.state[p.y][p.x] = alive
+	g.state[p.Y][p.X] = alive
 }
 
 func InitGame(w, h int) *Game {
@@ -32,7 +34,7 @@ func InitGame(w, h int) *Game {
 	return &Game{state: state, nextState: nextState}
 }
 
-func (g *Game) calculateNextState() {
+func (g *Game) CalculateNextState() {
 	g.clearNextState()
 	for p := range g.Points() {
 		willBeAlive := g.calculateNextCell(p)
@@ -50,8 +52,8 @@ func (g *Game) calculateNextCell(p Point) bool {
 	nCount := 0
 	for _, dir := range dirs {
 		n := p.Add(dir)
-		yCheck := n.y >= 0 && n.y < len(g.state)
-		xCheck := n.x >= 0 && n.x < len(g.state[0])
+		yCheck := n.Y >= 0 && n.Y < len(g.state)
+		xCheck := n.X >= 0 && n.X < len(g.state[0])
 		if yCheck && xCheck && g.AliveAt(n) {
 			nCount++
 		}
@@ -72,14 +74,14 @@ func (g *Game) clearNextState() {
 
 func (g *Game) Swap() {
 	g.state, g.nextState = g.nextState, g.state
-	g.generation++
+	g.Generation++
 }
 
 func (g *Game) SeedPattern(origin Point, offsets []Point) {
 	for _, offset := range offsets {
 		p := origin.Add(offset)
-		if p.y >= 0 && p.y < len(g.state) && p.x >= 0 && p.x < len(g.state[0]) {
-			g.state[p.y][p.x] = true
+		if p.Y >= 0 && p.Y < len(g.state) && p.X >= 0 && p.X < len(g.state[0]) {
+			g.state[p.Y][p.X] = true
 		}
 	}
 }
